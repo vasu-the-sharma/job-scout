@@ -1,0 +1,87 @@
+# Career Pilot — User Profile Template
+# Copy this file to profile.yaml and fill in your details.
+# profile.yaml is gitignored — it stays on your machine only.
+
+name: "Your Full Name"
+email: "you@email.com"
+phone: "+91-XXXXXXXXXX"
+location: "City, Country"
+linkedin: "https://linkedin.com/in/yourhandle"
+github: "your-github-username"
+
+# Current role
+current_role:
+  title: "Senior Software Engineer"
+  company: "Your Company"
+  team: "Team Name (optional)"
+  duration: "2+ years"
+  notice_period: "30 days"    # 30, 60, or 90 days — affects application timing
+
+# Target roles (ordered by preference)
+target_roles:
+  - "Senior Software Engineer"
+  - "SDE Lead"
+  - "Tech Lead"
+  - "Senior Backend Engineer"
+
+# Experience level
+years_of_experience: 4
+seniority: "senior"           # junior, mid, senior, staff, principal
+
+# Core skills (grouped by strength — be honest, scorer uses this)
+skills:
+  primary:                    # Daily use, can lead with these in interviews
+    - "Python"
+    - "TypeScript"
+    - "React"
+    - "Java"
+  secondary:                  # Comfortable, production experience
+    - "Docker"
+    - "Kubernetes"
+    - "PostgreSQL"
+    - "Redis"
+  tools:
+    - "Git"
+    - "Linux"
+    - "AWS"
+
+# Domain experience (used for domain_fit scoring)
+domains:
+  - "Full-Stack Product Engineering"
+  - "API Integration"
+  - "AI/ML Platform Engineering"
+
+# Key achievements (used by /tailor for bullet selection and emphasis)
+achievements:
+  - area: "Your Domain"
+    bullet: "Accomplished X as measured by Y, by doing Z"
+  - area: "Another Domain"
+    bullet: "Another XYZ achievement"
+
+# Preferences
+preferences:
+  work_model: "hybrid"        # remote, hybrid, onsite
+  remote_ok: true
+  relocation: false
+  preferred_cities:
+    - "Bengaluru"
+    - "Remote India"
+    - "Hyderabad"
+  company_stage:              # startup, growth, enterprise, any
+    - "growth"
+    - "startup"
+  min_ctc_lakhs: 20           # Minimum acceptable CTC in lakhs per annum
+  expected_ctc_lakhs: 30      # Target CTC in lakhs per annum
+
+# Role-type emphasis hints (used by /tailor to pick what to lead with)
+# Keys should describe role types you'll encounter; values guide bullet ordering
+role_mapping:
+  "product_engineering":
+    lead_with: ["your strongest product work"]
+    de_emphasize: ["less relevant work"]
+  "systems_backend":
+    lead_with: ["your backend/systems work"]
+    de_emphasize: ["frontend work"]
+  "ai_ml_platform":
+    lead_with: ["your AI/ML work"]
+    de_emphasize: ["basic CRUD work"]

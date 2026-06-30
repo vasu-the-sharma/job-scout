@@ -1,0 +1,89 @@
+# Career Pilot — Target Companies & Platforms
+# Copy this to targets.yaml and customize for your job search.
+
+# ── Job platforms to search ───────────────────────────────────────────────────
+platforms:
+  linkedin:
+    base_url: "https://www.linkedin.com/jobs/search/"
+    search_params:
+      location: "India"          # Change to your country/city
+      f_TPR: "r604800"           # Past week (604800 seconds)
+      sortBy: "DD"               # Most recent first
+    priority: 1
+
+  naukri:
+    base_url: "https://www.naukri.com/"
+    search_suffix: "-jobs"
+    search_params:
+      experience: "3-8"          # Years of experience range
+      location: "bangalore+hyderabad+pune"
+      jobAge: "7"                # Last 7 days
+    priority: 1
+
+  instahyre:
+    base_url: "https://www.instahyre.com/jobs/"
+    priority: 2
+
+  indeed:
+    base_url: "https://in.indeed.com/jobs"
+    search_params:
+      fromage: "7"               # Last 7 days
+    priority: 3
+
+  wellfound:
+    base_url: "https://wellfound.com/jobs"
+    priority: 3
+
+# ── Target companies ──────────────────────────────────────────────────────────
+# Organize into tiers based on your preference. /scan will check these pages.
+target_companies:
+  tier_1:  # Dream companies — apply immediately for any relevant role
+    - name: "Company A"
+      careers: "https://company-a.com/careers"
+      notes: "Why you want to work here, what team you're targeting"
+    - name: "Company B"
+      careers: "https://company-b.com/jobs"
+      notes: "What role or team interests you"
+
+  tier_2:  # Strong companies — evaluate carefully before applying
+    - name: "Company C"
+      careers: "https://company-c.com/careers"
+      notes: "Notes about the team or role type"
+    - name: "Company D"
+      careers: "https://company-d.com/careers"
+      notes: "Notes"
+
+  tier_3:  # Worth checking if the right role comes up
+    - name: "Company E"
+      careers: "https://company-e.com/careers"
+      notes: "Notes"
+
+# ── Search queries ────────────────────────────────────────────────────────────
+# Customize these based on your target roles and tech stack.
+search_queries:
+  - keywords: "senior software engineer"
+    location: "Your City"
+    skills_filter: ["Python", "React", "backend"]
+
+  - keywords: "SDE lead backend"
+    location: "Your Country"
+    skills_filter: ["Java", "Spring Boot", "microservices"]
+
+  - keywords: "senior engineer AI ML platform"
+    location: "Your City OR Remote"
+    skills_filter: ["Python", "LLM", "RAG"]
+
+  - keywords: "tech lead full stack"
+    location: "Your City OR Nearby City"
+    skills_filter: ["React", "TypeScript", "Node.js"]
+
+  - keywords: "staff engineer systems"
+    location: "Your Country OR Remote"
+    skills_filter: ["C++", "systems", "infrastructure"]
+
+# ── Salary research sources ───────────────────────────────────────────────────
+research_sources:
+  - "glassdoor.co.in"
+  - "ambitionbox.com"
+  - "levels.fyi"
+  - "teamblind.com"

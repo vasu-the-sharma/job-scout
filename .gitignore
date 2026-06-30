@@ -1,0 +1,35 @@
+# ── Personal data (stays local, never committed) ─────────────────────────────
+config/profile.yaml
+config/targets.yaml
+resume/base_resume.md
+applications/
+.claude/
+
+# ── Runtime / generated outputs ───────────────────────────────────────────────
+jobs/pipeline.db
+jobs/pipeline.db-wal
+jobs/pipeline.db-shm
+jobs/*.json
+jobs/*.csv
+jobs/*.html
+jobs/*.md
+jobs/interview_prep_*
+
+tailored/*.pdf
+tailored/*.md
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# ── OS / IDE ──────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
