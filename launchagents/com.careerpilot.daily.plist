@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Career Pilot — Daily Alert LaunchAgent
+  Installed by: bash scripts/setup_alert.sh
+  Removed by:   bash scripts/uninstall_alert.sh
+
+  Fires daily at 08:00 in the machine's local timezone.
+  Edit Hour/Minute below if you want a different time, then re-run setup_alert.sh.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.careerpilot.daily</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>CAREER_PILOT_DIR/scripts/daily_alert.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>8</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>CAREER_PILOT_DIR</string>
+
+    <key>StandardOutPath</key>
+    <string>CAREER_PILOT_DIR/jobs/alert.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>CAREER_PILOT_DIR/jobs/alert_error.log</string>
+
+    <!-- Ensure homebrew and nvm paths are available for claude CLI -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>HOME</key>
+        <string>USER_HOME</string>
+    </dict>
+
+    <!-- Retry once if the job fails -->
+    <key>StartInterval</key>
+    <integer>0</integer>
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

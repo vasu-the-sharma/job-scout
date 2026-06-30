@@ -14,11 +14,17 @@ career-pilot/
 ├── resume/
 │   └── base_resume.md ← Master resume (source of truth)
 ├── scripts/
-│   ├── tracker.py     ← SQLite job tracking CRUD
-│   ├── scorer.py      ← Fit scoring engine (10 dimensions)
-│   ├── resume_gen.py  ← PDF resume generator (reportlab)
-│   ├── search_urls.py ← Platform search URL builder
-│   └── dashboard.py   ← Rich terminal dashboard
+│   ├── tracker.py          ← SQLite job tracking CRUD
+│   ├── scorer.py           ← Fit scoring engine (10 dimensions)
+│   ├── resume_gen.py       ← PDF resume generator (reportlab)
+│   ├── search_urls.py      ← Platform search URL builder
+│   ├── dashboard.py        ← Rich terminal dashboard
+│   ├── daily_alert.sh      ← Daily alert runner (called by LaunchAgent)
+│   ├── send_alert_email.py ← Email sender (SMTP via alert_config.yaml)
+│   ├── setup_alert.sh      ← One-time LaunchAgent installer
+│   └── uninstall_alert.sh  ← LaunchAgent remover
+├── launchagents/
+│   └── com.careerpilot.daily.plist ← macOS LaunchAgent template
 ├── tailored/          ← Generated per-job resumes (PDF + md)
 ├── jobs/              ← Cached job descriptions (JSON)
 └── templates/
@@ -307,6 +313,34 @@ Generate a weekly pipeline report:
 - Score distribution
 - Recommended next actions
 - Stale applications needing follow-up (>7 days no response)
+
+---
+
+### `/alert` — Daily Alert Management
+
+**Trigger**: User says "alert", "set up daily alert", "alert status", "pause alert", "test alert"
+
+**Sub-commands**:
+- `/alert setup` — walk the user through `bash scripts/setup_alert.sh`. Check if `config/alert_config.yaml` exists and has real credentials. If not, guide them through creating a Gmail App Password.
+- `/alert status` — show whether the LaunchAgent is loaded: `launchctl list | grep careerpilot`. Show the last 20 lines of `jobs/alert.log`.
+- `/alert test` — run `bash scripts/daily_alert.sh` right now so the user can see what the 8 AM run will look like.
+- `/alert pause` — `launchctl unload ~/Library/LaunchAgents/com.careerpilot.daily.plist`
+- `/alert resume` — `launchctl load ~/Library/LaunchAgents/com.careerpilot.daily.plist`
+- `/alert uninstall` — `bash scripts/uninstall_alert.sh`
+- `/alert threshold <N>` — update `score_threshold` in `config/alert_config.yaml` to N.
+
+**How the alert works** (explain this when user asks):
+1. macOS LaunchAgent fires `scripts/daily_alert.sh` at 8:00 AM local time — no Claude Code session required.
+2. The shell script calls `claude -p` with a self-contained search prompt.
+3. Claude runs ≤5 web searches (snippet-only), scores each result via `scorer.py`.
+4. New jobs scoring ≥ threshold are added to `jobs/pipeline.db` via `tracker.py`.
+5. If any matches are found, `send_alert_email.py` fires an email to the address in `alert_config.yaml`.
+6. The email arrives on the user's phone — tap it, open Career Pilot, run `/tailor <job_id>`.
+
+**Setup requirements**:
+- `claude` CLI in PATH (from Claude Code installation)
+- `config/alert_config.yaml` with a valid Gmail App Password
+- LaunchAgent loaded (done by `setup_alert.sh`)
 
 ---
 

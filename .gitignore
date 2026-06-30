@@ -1,6 +1,7 @@
 # ── Personal data (stays local, never committed) ─────────────────────────────
 config/profile.yaml
 config/targets.yaml
+config/alert_config.yaml
 resume/base_resume.md
 applications/
 .claude/
@@ -14,6 +15,8 @@ jobs/*.csv
 jobs/*.html
 jobs/*.md
 jobs/interview_prep_*
+jobs/alert.log
+jobs/alert_error.log
 
 tailored/*.pdf
 tailored/*.md

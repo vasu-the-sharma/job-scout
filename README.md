@@ -64,6 +64,9 @@ Then type any command:
 /negotiate <job_id>  # Salary data, counter-offer template
 /scan [company]      # Scan company career pages for new openings
 /weekly              # Weekly pipeline report
+/alert setup         # Set up the daily background alert (one-time)
+/alert status        # Check if the alert is running and see last log
+/alert test          # Run today's search right now
 /setup               # Re-run onboarding wizard
 ```
 
@@ -239,6 +242,66 @@ preferences:
 ```
 
 Edit `resume/base_resume.md` with your actual resume. This is the source of truth — `/tailor` reorders and re-emphasizes from it but never fabricates.
+
+---
+
+## Daily Job Alerts
+
+Career Pilot can run a daily background search at 8:00 AM and email you when new strong matches are found — no Claude Code session required.
+
+### One-time setup (5 minutes)
+
+**1. Generate a Gmail App Password**
+
+Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), click **Add app password**, name it `Career Pilot`, and copy the 16-character code.
+
+**2. Configure the alert**
+
+```bash
+cp config/alert_config.example.yaml config/alert_config.yaml
+# Edit config/alert_config.yaml — set your email and app_password
+```
+
+**3. Install the LaunchAgent**
+
+```bash
+bash scripts/setup_alert.sh
+```
+
+That's it. A macOS LaunchAgent fires `scripts/daily_alert.sh` at 8 AM, runs a five-query job search via the `claude` CLI, scores every result, adds new matches to `pipeline.db`, and emails you a digest if anything scores above your threshold.
+
+### Manage the alert from Claude Code
+
+```
+/alert status     # Check if running, see last log output
+/alert test       # Run the search right now (don't wait for 8 AM)
+/alert pause      # Temporarily disable
+/alert resume     # Re-enable
+/alert threshold 80   # Only alert on 80+ scores
+/alert uninstall  # Remove the LaunchAgent entirely
+```
+
+### What the email looks like
+
+```
+Subject: [Career Pilot] 🚨 JOB ALERT — 2 new match(es) · 2026-07-01
+
+🚨 JOB ALERT — 2 new match(es) · 2026-07-01
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+85/100 🟢  Razorpay — Senior Backend Engineer
+📍 Bengaluru · LinkedIn
+🔗 https://linkedin.com/jobs/view/...
+💡 Strong Python + Kafka match, growth-stage fintech, 4-6yr band fits perfectly.
+
+78/100 🟡  Atlassian — Senior Software Engineer
+📍 Bengaluru · Careers page
+🔗 https://atlassian.com/company/careers/...
+💡 Developer tools domain, TypeScript + React stack, Bengaluru office.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Open Career Pilot and run /evaluate <url> or /tailor <job_id> to act on these.
+```
+
+Tap the link → open Claude Code → `/tailor <job_id>`. Two touches to a tailored resume.
 
 ---
 
