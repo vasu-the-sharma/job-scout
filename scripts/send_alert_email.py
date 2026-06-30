@@ -4,7 +4,7 @@
 Sends job alerts via all configured channels:
   1. macOS system notification  (always fires, zero config)
   2. iPhone push via ntfy.sh    (free, needs ntfy app + topic in config)
-  3. WhatsApp via CallMeBot     (free, needs one-time activation + apikey)
+  3. Telegram bot               (free, needs telegram_token + telegram_chat_id)
   4. Gmail SMTP                 (needs App Password in config)
 
 Usage:
@@ -13,6 +13,7 @@ Usage:
 """
 
 import sys
+import json
 import subprocess
 import smtplib
 import urllib.request
@@ -122,38 +123,44 @@ def notify_ntfy(subject: str, body: str, config: dict):
     return False
 
 
-# ── Channel 3: WhatsApp via CallMeBot ─────────────────────────────────────────
+# ── Channel 3: Telegram bot ───────────────────────────────────────────────────
 
-def notify_whatsapp(body: str, config: dict):
+def notify_telegram(body: str, config: dict):
     """
-    Free WhatsApp messages via CallMeBot.
-    One-time activation: send 'I allow callmebot to send me messages'
-    to +34 644 61 39 60 on WhatsApp, then save the API key you receive.
-    Config keys: whatsapp_phone (e.g. 919654374405), whatsapp_apikey
+    Free Telegram notifications via Bot API.
+    Setup: create a bot via @BotFather, send /start to it, then store
+    telegram_token and telegram_chat_id in alert_config.yaml.
     """
-    phone = str(config.get("whatsapp_phone", "")).replace("+", "").replace(" ", "")
-    apikey = str(config.get("whatsapp_apikey", ""))
+    token = str(config.get("telegram_token", "")).strip()
+    chat_id = str(config.get("telegram_chat_id", "")).strip()
 
-    if not phone or not apikey:
+    if not token or not chat_id:
         return False
 
-    # CallMeBot has a 1600-char limit — trim body if needed
-    text = body[:1500] if len(body) > 1500 else body
-    encoded = urllib.parse.quote(text)
-    url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={encoded}&apikey={apikey}"
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = json.dumps({
+        "chat_id": chat_id,
+        "text": body,
+        "parse_mode": "",          # plain text — emojis render natively
+        "disable_web_page_preview": True,
+    }).encode("utf-8")
 
     try:
-        req = urllib.request.Request(url, method="GET")
-        req.add_header("User-Agent", "CareerPilot/1.0")
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            response_text = resp.read().decode()
-            if "Message Sent" in response_text or resp.status == 200:
-                print(f"✅ WhatsApp message sent to +{phone}.")
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read())
+            if result.get("ok"):
+                print("✅ Telegram notification sent.")
                 return True
             else:
-                print(f"⚠️  WhatsApp: unexpected response — {response_text[:100]}")
+                print(f"⚠️  Telegram error: {result}")
     except Exception as e:
-        print(f"⚠️  WhatsApp failed: {e}")
+        print(f"⚠️  Telegram failed: {e}")
     return False
 
 
@@ -208,7 +215,7 @@ def main():
 
     notify_macos(subject, body)
     notify_ntfy(subject, body, config)
-    notify_whatsapp(body, config)
+    notify_telegram(body, config)
     send_email(body, config)
 
 
