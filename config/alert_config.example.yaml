@@ -1,26 +1,30 @@
-# Career Pilot — Email Alert Configuration
-# ─────────────────────────────────────────
-# Copy this file to config/alert_config.yaml and fill in your values.
-# alert_config.yaml is gitignored — your credentials never leave this machine.
+# Career Pilot — Alert Config
+# Copy to config/alert_config.yaml and fill in.
+# This file is gitignored — credentials never leave your machine.
 
-# ── Gmail Setup ───────────────────────────────────────────────────────────────
-# Your Gmail address (used as both sender and default recipient)
+# ── Score threshold ────────────────────────────────────────────────────────────
+# Jobs below this score are added to pipeline silently (no notification).
+score_threshold: 75
+
+# ── Channel 1: Gmail SMTP ─────────────────────────────────────────────────────
+# Requires Gmail 2-Step Verification + an App Password.
+# Generate at: https://myaccount.google.com/apppasswords
 email: "you@gmail.com"
-
-# Gmail App Password — NOT your regular Gmail password.
-# Generate one at: https://myaccount.google.com/apppasswords
-# Click "Add app password" → name it "Career Pilot" → copy the 16-char code.
-app_password: "xxxx xxxx xxxx xxxx"
-
-# Where to send the alert (defaults to `email` above)
+app_password: "xxxx xxxx xxxx xxxx"   # 16-char App Password (spaces OK)
 recipient: "you@gmail.com"
-
-# ── SMTP Settings ─────────────────────────────────────────────────────────────
-# Gmail defaults — only change if using a different email provider
 smtp_host: "smtp.gmail.com"
 smtp_port: 587
 
-# ── Alert Threshold ───────────────────────────────────────────────────────────
-# Jobs below this score are added to the pipeline silently — no notification.
-# Recommended: 75 (balanced) or 80 (strong matches only)
-score_threshold: 75
+# ── Channel 2: iPhone push via ntfy.sh (FREE) ─────────────────────────────────
+# 1. Install the 'ntfy' app on your iPhone (App Store, free)
+# 2. Open ntfy → tap '+' → subscribe to your topic name below
+# 3. That's it — no account needed
+ntfy_topic: "careerpilot-yourname"    # Choose any unique string
+
+# ── Channel 3: WhatsApp via CallMeBot (FREE) ──────────────────────────────────
+# One-time activation:
+#   1. Add +34 644 61 39 60 to your WhatsApp contacts (name it "CallMeBot")
+#   2. Send this exact message: I allow callmebot to send me messages
+#   3. You'll receive an API key — paste it below
+whatsapp_phone: "919876543210"        # Your number with country code, no +
+whatsapp_apikey: ""                   # API key from CallMeBot activation message
