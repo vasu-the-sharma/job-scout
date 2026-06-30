@@ -17,11 +17,14 @@ The intelligence lives in `CLAUDE.md` — a skill definition file that Claude Co
 
 ## Features
 
-- **10-dimension fit scoring** — each job is scored on tech stack, experience level, domain fit, role scope, growth potential, location, company stage, compensation, culture signals, and application effort
-- **ATS-optimized PDF resumes** — generated from markdown, no tables or columns, keyword-matched to the job description
-- **Local SQLite pipeline** — full CRUD, status tracking, score history, export to CSV/JSON
-- **Clickable HTML job list** — open in any browser, filter by score/status, one-click "Copy /tailor" to clipboard
+- **10-dimension fit scoring** — each job scored on tech stack, experience, domain, scope, growth, location, company stage, compensation, culture, and application effort
+- **ATS-optimized PDF resumes** — generated from markdown, no tables or columns, keyword-matched to the JD
+- **1-page auto-fit** — PDF generator tries progressively tighter spacing until content lands on exactly 1 page; every section preserved
+- **Local SQLite pipeline** — full CRUD, status tracking from `discovered` to `accepted/rejected`, CSV/JSON export
+- **Clickable HTML job list** — filter by score/status, one-click "Copy /tailor" to clipboard
 - **Token-budgeted search** — snippet-first discovery, at most 5 web searches per `/search`, full-page fetch only on explicit `/evaluate` or `/tailor`
+- **Daily background alert** — macOS LaunchAgent fires at 8 AM, searches for new matches, generates tailored resume per match, notifies across 4 channels
+- **4-channel notifications** — macOS banner, iPhone push (ntfy), Telegram (text + PDF file), Gmail (text + PDF attachment)
 - **Indian job market aware** — Naukri, Instahyre, notice period conventions, CTC vs in-hand salary
 - **Works on mobile** — Claude Code runs on iOS/Android; check your pipeline from anywhere
 
@@ -35,7 +38,7 @@ git clone https://github.com/<your-username>/career-pilot.git
 cd career-pilot
 
 # 2. Install Python dependencies
-pip install reportlab pyyaml --break-system-packages
+pip install reportlab pyyaml pypdf --break-system-packages
 
 # 3. Copy and fill in your profile
 cp config/profile.example.yaml config/profile.yaml
@@ -86,10 +89,14 @@ These run locally with near-zero model cost:
 |---|---|
 | `tracker.py` | SQLite CRUD for the jobs pipeline |
 | `scorer.py` | Programmatic fit scoring (tech stack, experience, location, compensation) |
-| `resume_gen.py` | Markdown → ATS-optimized PDF via reportlab |
+| `resume_gen.py` | Markdown → ATS-optimized 1-page PDF via reportlab (auto-fit) |
 | `joblist.py` | Generates a self-contained HTML job list from the DB |
 | `dashboard.py` | Terminal dashboard (full / compact / kanban views) |
 | `search_urls.py` | Builds search URLs for LinkedIn, Naukri, Instahyre, Indeed, Wellfound |
+| `daily_alert.sh` | Daily alert runner (called by LaunchAgent) |
+| `send_alert_email.py` | Multi-channel notifier (macOS + iPhone + Telegram + Gmail) |
+| `setup_alert.sh` | One-time LaunchAgent installer |
+| `uninstall_alert.sh` | LaunchAgent remover |
 
 ---
 
@@ -104,7 +111,7 @@ career-pilot/
 │
 ├── config/
 │   ├── profile.example.yaml     # Template — copy to profile.yaml and fill in
-│   ├── profile.yaml             # Your profile (gitignored — stays local)
+│   ├── alert_config.example.yaml # Template — copy to alert_config.yaml
 │   └── targets.yaml             # Target companies and platforms
 │
 ├── resume/
@@ -113,13 +120,23 @@ career-pilot/
 ├── scripts/
 │   ├── tracker.py               # SQLite job pipeline CRUD
 │   ├── scorer.py                # 10-dimension fit scoring engine
-│   ├── resume_gen.py            # Markdown → PDF generator (reportlab)
+│   ├── resume_gen.py            # Markdown → 1-page PDF generator (auto-fit)
 │   ├── search_urls.py           # Platform search URL builder
 │   ├── dashboard.py             # Rich terminal dashboard
-│   └── joblist.py               # Clickable HTML/Markdown job list generator
+│   ├── joblist.py               # Clickable HTML/Markdown job list generator
+│   ├── daily_alert.sh           # Daily alert runner (LaunchAgent entry point)
+│   ├── send_alert_email.py      # Multi-channel notifier
+│   ├── setup_alert.sh           # One-time LaunchAgent installer
+│   └── uninstall_alert.sh       # LaunchAgent remover
 │
-├── tailored/                    # Generated per-job resumes (gitignored)
-│   └── *.md / *.pdf
+├── launchagents/
+│   └── com.careerpilot.daily.plist  # macOS LaunchAgent template
+│
+├── applications/                # Per-job folders with JD + tailored resume (gitignored)
+│   └── Company/JobID/
+│       ├── jd_and_link.txt
+│       ├── updated_resume.md
+│       └── updated_resume.pdf
 │
 └── jobs/                        # Runtime data (gitignored)
     ├── pipeline.db              # SQLite database
@@ -158,20 +175,23 @@ The first four dimensions (tech stack, experience, location, compensation) are c
 
 ## Resume Generation
 
-`resume_gen.py` converts any markdown resume to a clean PDF using reportlab:
+`resume_gen.py` converts any markdown resume to a clean 1-page PDF using reportlab:
 
+- **Auto-fit**: tries 5 compression levels (scale 1.0 → 0.72) until content fits on page 1; prints which scale was used
 - No tables, no columns, no images — ATS parsers handle these poorly
 - Standard section headings (Experience, Skills, Education)
 - Keywords from the job description are emphasized in the tailored version
 - XYZ bullet format: "Accomplished [X] as measured by [Y], by doing [Z]"
-- 1-page target (2 pages max for 10+ years)
 
 ```bash
 # Generate PDF from your base resume
 python3 scripts/resume_gen.py resume/base_resume.md
 
-# Generate PDF from a tailored resume
-python3 scripts/resume_gen.py tailored/company_role.md
+# Generate with a custom output path
+python3 scripts/resume_gen.py tailored/company_role.md --output out.pdf
+
+# Force a specific compression scale (0.72–1.0)
+python3 scripts/resume_gen.py resume/base_resume.md --scale 0.90
 
 # Preview the parsed structure without generating PDF
 python3 scripts/resume_gen.py resume/base_resume.md --preview
@@ -206,7 +226,7 @@ A key design constraint: `/search` must stay under ~150K tokens and ~15 tool cal
 2. **Cap at 5 searches** — at most 5 `web_search` calls per `/search` run.
 3. **Score locally** — `scorer.py` runs deterministically with near-zero model cost.
 4. **No sub-agents per job** — one pass, inline, no spawning.
-5. **Fetch on commit** — full `web_fetch` happens only when you explicitly run `/evaluate <url>` or `/tailor <id>`.
+5. **Fetch on commit** — full `web_fetch` happens only when you explicitly run `/evaluate <url>` or `/tailor <id>`, or for confirmed matches in the daily alert.
 6. **Cache JDs** — fetched descriptions are saved to `jobs/<id>.json`; re-runs and `/tailor` read the cache.
 
 ---
@@ -247,19 +267,34 @@ Edit `resume/base_resume.md` with your actual resume. This is the source of trut
 
 ## Daily Job Alerts
 
-Career Pilot can run a daily background search at 8:00 AM and email you when new strong matches are found — no Claude Code session required.
+Career Pilot runs a daily background search at 8:00 AM and notifies you when new strong matches appear — no Claude Code session required. For each match above your threshold it:
+
+1. Fetches the full job description
+2. Generates a tailored resume (MD + PDF)
+3. Fires across all 4 notification channels simultaneously
+
+### What arrives on your devices
+
+| Channel | What you get |
+|---|---|
+| **macOS** | Banner: score + role + "Resume in email & Telegram" |
+| **iPhone** (ntfy) | Push notification with same summary |
+| **Telegram** | Full alert text + tailored resume PDF as a file |
+| **Gmail** | Full alert text + tailored resume PDF as an attachment |
 
 ### One-time setup (5 minutes)
 
-**1. Generate a Gmail App Password**
+**1. Set up notifications**
 
-Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), click **Add app password**, name it `Career Pilot`, and copy the 16-character code.
+- **Gmail**: Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords), create an App Password named `Career Pilot`, copy the 16-char code
+- **iPhone**: Install the [ntfy app](https://apps.apple.com/app/ntfy/id1625396347) → subscribe to the topic name you'll set in config
+- **Telegram**: Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token → start your bot → get your chat ID from `api.telegram.org/bot<TOKEN>/getUpdates`
 
-**2. Configure the alert**
+**2. Configure**
 
 ```bash
 cp config/alert_config.example.yaml config/alert_config.yaml
-# Edit config/alert_config.yaml — set your email and app_password
+# Fill in: email, app_password, recipient, ntfy_topic, telegram_token, telegram_chat_id
 ```
 
 **3. Install the LaunchAgent**
@@ -268,40 +303,40 @@ cp config/alert_config.example.yaml config/alert_config.yaml
 bash scripts/setup_alert.sh
 ```
 
-That's it. A macOS LaunchAgent fires `scripts/daily_alert.sh` at 8 AM, runs a five-query job search via the `claude` CLI, scores every result, adds new matches to `pipeline.db`, and emails you a digest if anything scores above your threshold.
+That's it. A macOS LaunchAgent fires `scripts/daily_alert.sh` at 8 AM, runs a five-query job search via the `claude` CLI, scores every result, generates tailored resumes for confirmed matches, and notifies all channels.
 
-### Manage the alert from Claude Code
-
-```
-/alert status     # Check if running, see last log output
-/alert test       # Run the search right now (don't wait for 8 AM)
-/alert pause      # Temporarily disable
-/alert resume     # Re-enable
-/alert threshold 80   # Only alert on 80+ scores
-/alert uninstall  # Remove the LaunchAgent entirely
-```
-
-### What the email looks like
+### What the alert looks like
 
 ```
-Subject: [Career Pilot] 🚨 JOB ALERT — 2 new match(es) · 2026-07-01
-
 🚨 JOB ALERT — 2 new match(es) · 2026-07-01
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 85/100 🟢  Razorpay — Senior Backend Engineer
 📍 Bengaluru · LinkedIn
 🔗 https://linkedin.com/jobs/view/...
 💡 Strong Python + Kafka match, growth-stage fintech, 4-6yr band fits perfectly.
+📄 Resume tailored and attached.
 
 78/100 🟡  Atlassian — Senior Software Engineer
 📍 Bengaluru · Careers page
 🔗 https://atlassian.com/company/careers/...
 💡 Developer tools domain, TypeScript + React stack, Bengaluru office.
+📄 Resume tailored and attached.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Open Career Pilot and run /evaluate <url> or /tailor <job_id> to act on these.
+Open Career Pilot and run /apply <job_id> to submit.
 ```
 
-Tap the link → open Claude Code → `/tailor <job_id>`. Two touches to a tailored resume.
+Tap the job URL → review the pre-attached resume → submit. Two touches.
+
+### Manage the alert
+
+```
+/alert status          # Check if running, show last log
+/alert test            # Run the full alert right now (don't wait for 8 AM)
+/alert pause           # Temporarily disable
+/alert resume          # Re-enable
+/alert threshold 80    # Only alert on 80+ scores
+/alert uninstall       # Remove the LaunchAgent entirely
+```
 
 ---
 
@@ -322,8 +357,11 @@ Tap the link → open Claude Code → `/tailor <job_id>`. Two touches to a tailo
 - **Python 3.8+**
 - **reportlab** — PDF generation: `pip install reportlab`
 - **pyyaml** — YAML config parsing: `pip install pyyaml`
+- **pypdf** — PDF page counting (auto-fit): `pip install pypdf`
 
-Both pip packages have fallback behavior if missing, but installing them is recommended for full functionality.
+```bash
+pip install reportlab pyyaml pypdf --break-system-packages
+```
 
 ---
 
